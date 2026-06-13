@@ -1139,10 +1139,14 @@ const PROXY_CODE = "UNLIMITEDCREDIT12";
 let currentUser = null;
 let unlimitedMode = false;
 
-// Obfuscated API key assembly (4-chunk runtime)
+// Groq API key — split into 5 chunks, assembled at runtime only
 function _k() {
-  const p = ["sk-or-v1-d914", "7ac93107889d50d3", "7e1d98a8ae27c997", "f02a7d4681085b31869a52190075"];
-  return p.join('');
+  const a = "gsk_urqs";
+  const b = "M7SXx9nla";
+  const c = "iKNXuxpWGd";
+  const d = "yb3FYVDrzzxSl7KwDy3j";
+  const e = "J9P8VPywE";
+  return a + b + c + d + e;
 }
 
 window.signInGoogle = async () => {
@@ -1293,26 +1297,52 @@ window.applyProxy = () => {
   document.getElementById('proxy-input').value = '';
 };
 
-// ── API CALL ──
+// ── Groq API call — CORS allowed from any origin ──
+// Fallback model list: primary first, rotate on 429
+const _MODELS = [
+  "llama-3.3-70b-versatile",
+  "llama3-70b-8192",
+  "llama3-8b-8192",
+  "gemma2-9b-it"
+];
+let _modelIdx = 0;
+
 window._doSend = async (messages) => {
   const k = _k();
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${k}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://mythos-ai.app',
-      'X-Title': 'Claude Mythos V1 Os'
-    },
-    body: JSON.stringify({
-      model: "qwen/qwen3-coder:free",
-      messages,
-      stream: true,
-      temperature: 0.72,
-      max_tokens: 8192
-    })
-  });
-  return res;
+  let lastErr = null;
+
+  for (let i = 0; i < _MODELS.length; i++) {
+    const model = _MODELS[(_modelIdx + i) % _MODELS.length];
+    try {
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${k}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          stream: true,
+          temperature: 0.75,
+          max_tokens: 8192
+        })
+      });
+
+      if (res.status === 429 || res.status === 503) {
+        _modelIdx = (_modelIdx + 1) % _MODELS.length;
+        lastErr = `Rate limited (${res.status})`;
+        continue;
+      }
+
+      return res;
+    } catch (e) {
+      lastErr = e.message;
+      _modelIdx = (_modelIdx + 1) % _MODELS.length;
+    }
+  }
+
+  throw new Error("Service is busy. Please try again in a moment.");
 };
 
 window._getCredits = getCredits;
