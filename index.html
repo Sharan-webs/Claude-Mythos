@@ -734,27 +734,59 @@ body {
   font-size: 13px;
   color: var(--accent);
 }
-.msg-bubble pre {
+.code-block {
   background: var(--surface-0);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 16px;
-  overflow-x: auto;
+  overflow: hidden;
   margin: 10px 0;
-  position: relative;
 }
-.code-lang {
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.code-lang-label {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-3);
   letter-spacing: 1px;
   text-transform: uppercase;
-  margin-bottom: 8px;
-  display: block;
+}
+.code-copy-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.3px;
+}
+.code-copy-btn:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent-glow);
+  color: var(--accent);
+}
+.code-copy-btn.copied {
+  color: var(--green);
+  border-color: rgba(92,224,160,0.3);
+}
+.msg-bubble pre {
+  background: var(--surface-0);
+  padding: 14px 16px;
+  overflow-x: auto;
+  margin: 0;
 }
 .msg-bubble pre code {
   background: none; border: none; padding: 0;
   font-size: 13px; color: #c9d1d9; font-family: var(--font-mono);
+  line-height: 1.6;
 }
 .msg-bubble strong { font-weight: 600; }
 .msg-bubble em { font-style: italic; color: var(--text-2); }
@@ -1518,6 +1550,18 @@ function copyBubble(btn) {
 }
 window.copyBubble = copyBubble;
 
+function copyCode(btn) {
+  const code = btn.closest('.code-block').querySelector('code');
+  navigator.clipboard.writeText(code.innerText);
+  btn.textContent = 'Copied';
+  btn.classList.add('copied');
+  setTimeout(() => {
+    btn.textContent = 'Copy';
+    btn.classList.remove('copied');
+  }, 2000);
+}
+window.copyCode = copyCode;
+
 function likeMsg(btn, v) {
   btn.style.color = v > 0 ? 'var(--green)' : 'var(--danger)';
 }
@@ -1624,8 +1668,9 @@ function md(raw) {
 
   // Fenced code blocks
   t = t.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
-    const l = lang ? `<span class="code-lang">${lang}</span>` : '';
-    return `<pre>${l}<code>${code.trim()}</code></pre>`;
+    const label = lang || 'code';
+    const escaped = code.trim();
+    return `<div class="code-block"><div class="code-header"><span class="code-lang-label">${label}</span><button class="code-copy-btn" onclick="copyCode(this)">Copy</button></div><pre><code>${escaped}</code></pre></div>`;
   });
 
   // Inline code
