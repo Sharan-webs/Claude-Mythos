@@ -1297,9 +1297,9 @@ window.applyProxy = () => {
   document.getElementById('proxy-input').value = '';
 };
 
-// ── Groq API ──
+// ── Groq API — auto retry on 429 ──
 window._doSend = async (messages) => {
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const call = () => fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${_k()}`,
@@ -1313,6 +1313,21 @@ window._doSend = async (messages) => {
       max_tokens: 8192
     })
   });
+
+  let res = await call();
+
+  // On 429 wait and retry once automatically
+  if (res.status === 429) {
+    window.showToast("Rate limit hit — retrying in 8s...");
+    await new Promise(r => setTimeout(r, 8000));
+    res = await call();
+  }
+
+  // Still 429 after retry — give clear message
+  if (res.status === 429) {
+    throw new Error("You are sending messages too fast. Please wait 15-20 seconds before trying again.");
+  }
+
   return res;
 };
 
