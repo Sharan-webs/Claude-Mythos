@@ -1297,52 +1297,23 @@ window.applyProxy = () => {
   document.getElementById('proxy-input').value = '';
 };
 
-// ── Groq API call — CORS allowed from any origin ──
-// Fallback model list: primary first, rotate on 429
-const _MODELS = [
-  "llama-3.3-70b-versatile",
-  "llama3-70b-8192",
-  "llama3-8b-8192",
-  "gemma2-9b-it"
-];
-let _modelIdx = 0;
-
+// ── Groq API ──
 window._doSend = async (messages) => {
-  const k = _k();
-  let lastErr = null;
-
-  for (let i = 0; i < _MODELS.length; i++) {
-    const model = _MODELS[(_modelIdx + i) % _MODELS.length];
-    try {
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${k}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          stream: true,
-          temperature: 0.75,
-          max_tokens: 8192
-        })
-      });
-
-      if (res.status === 429 || res.status === 503) {
-        _modelIdx = (_modelIdx + 1) % _MODELS.length;
-        lastErr = `Rate limited (${res.status})`;
-        continue;
-      }
-
-      return res;
-    } catch (e) {
-      lastErr = e.message;
-      _modelIdx = (_modelIdx + 1) % _MODELS.length;
-    }
-  }
-
-  throw new Error("Service is busy. Please try again in a moment.");
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${_k()}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      messages,
+      stream: true,
+      temperature: 0.75,
+      max_tokens: 8192
+    })
+  });
+  return res;
 };
 
 window._getCredits = getCredits;
